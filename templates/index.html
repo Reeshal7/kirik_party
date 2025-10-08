@@ -1,170 +1,330 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emotion Detector</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #f0f2f5;
-            color: #333;
-            text-align: center;
-        }
-        .container {
-            background-color: #ffffff;
-            padding: 2rem 3rem;
-            border-radius: 15px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-            max-width: 760px;
-            width: 90%;
-        }
-        h1 {
-            color: #1c1e21;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            color: #606770;
-            margin-bottom: 1.5rem;
-        }
-        .video-container {
-            position: relative;
-            width: 100%;
-            margin: 0 auto 1.5rem;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            overflow: hidden;
-            background-color: #000;
-        }
-        video {
-            display: block;
-            width: 100%;
-            height: auto;
-            transform: scaleX(-1); /* Mirror effect */
-        }
-        button {
-            background: linear-gradient(45deg, #007bff, #0056b3);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
-            margin-bottom: 1rem;
-        }
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
-        }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        #result {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #007bff;
-            min-height: 2rem;
-            margin-top: 1rem;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Realtime Emotion Detector</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --accent:#7c3aed;
+      --muted:#9aa6b2;
+      --success:#10b981;
+      --danger:#ef4444;
+    }
+
+    *{box-sizing:border-box;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(180deg,#071124 0%, #071832 100%);
+      color:#e6eef6;
+      padding:24px;
+    }
+
+    .card{
+      width:920px;
+      max-width:100%;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:14px;
+      box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+      padding:18px;
+      display:grid;
+      grid-template-columns: 560px 1fr;
+      gap:18px;
+      align-items:start;
+    }
+
+    .left{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    video#video {
+      width:100%;
+      height:360px;
+      background:#000;
+      border-radius:10px;
+      object-fit:cover;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.02);
+    }
+
+    .controls{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+
+    button {
+      background:var(--accent);
+      color:white;
+      border:none;
+      padding:10px 14px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:600;
+      box-shadow: 0 6px 18px rgba(124,58,237,0.18);
+    }
+    button.secondary{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.06);
+      color:var(--muted);
+      box-shadow:none;
+      font-weight:600;
+    }
+    .small{
+      padding:8px 10px;font-size:0.9rem;border-radius:8px;
+    }
+
+    .info {
+      font-size:0.95rem;
+      color:var(--muted);
+      margin-top:6px;
+    }
+
+    .right{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .result{
+      background:rgba(255,255,255,0.02);
+      padding:14px;
+      border-radius:12px;
+      min-height:120px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:8px;
+    }
+
+    .result .label{
+      font-size:1.45rem;
+      font-weight:700;
+      letter-spacing:0.6px;
+    }
+
+    .confidence{
+      font-size:0.95rem;
+      color:var(--muted);
+    }
+
+    .log {
+      height:170px;
+      overflow:auto;
+      background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.006));
+      border-radius:10px;
+      padding:12px;
+      font-family:monospace;
+      font-size:0.9rem;
+      color:#cfe7ff;
+    }
+
+    .status {
+      display:inline-block;
+      margin-left:8px;
+      font-weight:600;
+      color:var(--muted);
+      font-size:0.9rem;
+    }
+
+    .flash {
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:700;
+      background:rgba(255,255,255,0.02);
+      color:var(--muted);
+      font-size:0.85rem;
+    }
+
+    @media (max-width:860px){
+      .card{ grid-template-columns: 1fr; }
+      video#video{ height:260px; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Live Emotion Detector</h1>
-        <p>Using a custom-trained Keras model via a Flask backend.</p>
-        <div class="video-container">
-            <video id="video" autoplay muted playsinline></video>
+  <main class="card" role="main">
+    <section class="left">
+      <video id="video" autoplay muted playsinline></video>
+
+      <div class="controls">
+        <button id="capture">Capture & Detect</button>
+        <button id="toggleStream" class="secondary small">Stop Stream</button>
+        <div style="flex:1"></div>
+        <div class="flash" id="cameraStatus">Camera: Off</div>
+      </div>
+
+      <div class="info">
+        Tip: Ensure your face is well-lit and roughly centered in the video frame. The backend will detect faces and return an emotion label + confidence.
+      </div>
+    </section>
+
+    <aside class="right">
+      <div class="result" aria-live="polite">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="color:var(--muted);font-size:0.85rem">Detected Emotion</div>
+            <div class="label" id="detectedLabel">—</div>
+            <div class="confidence" id="detectedConfidence">Confidence: —</div>
+          </div>
+          <div style="text-align:right">
+            <div style="color:var(--muted);font-size:0.85rem">Last update</div>
+            <div id="lastTime" style="font-weight:700">—</div>
+          </div>
         </div>
-        <button id="startButton">Start Camera</button>
-        <p id="result">Emotion: --</p>
-    </div>
+      </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const video = document.getElementById('video');
-            const startButton = document.getElementById('startButton');
-            const resultElement = document.getElementById('result');
-            let stream;
-            let intervalId;
+      <div class="log" id="logArea">Console log: ready.</div>
+    </aside>
+  </main>
 
-            // This function handles starting the camera and the prediction loop
-            async function startDetection() {
-                try {
-                    // Request access to the user's webcam
-                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    video.srcObject = stream;
-                    await video.play();
+  <!-- Hidden canvas used to capture a frame -->
+  <canvas id="captureCanvas" width="480" height="360" style="display:none;"></canvas>
 
-                    // Update UI once the camera is active
-                    startButton.style.display = 'none';
-                    resultElement.textContent = "Detecting...";
-                    
-                    // Start sending frames to the server for prediction every 200 milliseconds
-                    intervalId = setInterval(sendFrame, 200);
+  <script>
+    const video = document.getElementById('video');
+    const captureBtn = document.getElementById('capture');
+    const toggleStreamBtn = document.getElementById('toggleStream');
+    const cameraStatus = document.getElementById('cameraStatus');
+    const logArea = document.getElementById('logArea');
+    const detectedLabel = document.getElementById('detectedLabel');
+    const detectedConfidence = document.getElementById('detectedConfidence');
+    const lastTime = document.getElementById('lastTime');
 
-                } catch (err) {
-                    console.error("Error accessing webcam: ", err);
-                    resultElement.textContent = "Could not access webcam.";
-                }
-            }
-            
-            startButton.addEventListener('click', startDetection);
+    const canvas = document.getElementById('captureCanvas');
+    const ctx = canvas.getContext('2d');
 
-            // This function captures a frame, sends it to the server, and updates the UI with the result
-            async function sendFrame() {
-                // Ensure the video stream is active before proceeding
-                if (!video.srcObject || video.paused || video.ended) {
-                    return;
-                }
-                
-                // Create a canvas to capture the current video frame
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const context = canvas.getContext('2d');
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Convert the canvas image to a base64 JPEG data URL
-                const data = canvas.toDataURL('image/jpeg', 0.8);
+    let stream = null;
+    let streaming = false;
 
-                try {
-                    // Send the image data to the /predict endpoint on the Flask server
-                    const response = await fetch('/predict', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ image: data }),
-                    });
+    function log(msg){
+      const ts = new Date().toLocaleTimeString();
+      logArea.textContent = `[${ts}] ${msg}\n` + logArea.textContent;
+    }
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
+    async function startCamera(){
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+        video.srcObject = stream;
+        streaming = true;
+        cameraStatus.textContent = 'Camera: On';
+        cameraStatus.style.background = 'rgba(255,255,255,0.02)';
+        toggleStreamBtn.textContent = 'Stop Stream';
+        log('Camera started.');
+      } catch(err){
+        log('Camera error: ' + err.message);
+        cameraStatus.textContent = 'Camera: Error';
+      }
+    }
 
-                    // Parse the JSON response from the server
-                    const result = await response.json();
-                    
-                    // Update the result element with the predicted emotion and confidence
-                    resultElement.textContent = `Emotion: ${result.label} (${result.confidence.toFixed(1)}%)`;
-                
-                } catch (error) {
-                    console.error("Error sending frame to server:", error);
-                    resultElement.textContent = "Connection error.";
-                    // Stop the prediction loop if there's a connection error
-                    if (intervalId) clearInterval(intervalId);
-                }
-            }
+    function stopCamera(){
+      if(stream){
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      streaming = false;
+      video.srcObject = null;
+      cameraStatus.textContent = 'Camera: Off';
+      toggleStreamBtn.textContent = 'Start Stream';
+      log('Camera stopped.');
+    }
+
+    // Draw current video frame to canvas and return dataURL
+    function captureFrame() {
+      // choose canvas size matching video display (keeps aspect ratio)
+      const w = video.videoWidth || canvas.width;
+      const h = video.videoHeight || canvas.height;
+
+      // Resize canvas to actual video size for better quality capture
+      canvas.width = w;
+      canvas.height = h;
+
+      // Draw the frame
+      ctx.drawImage(video, 0, 0, w, h);
+
+      // Optionally, you could crop to center square or to face area (we rely on server face detection)
+      // Convert to JPEG to keep size reasonable
+      return canvas.toDataURL('image/jpeg', 0.9);
+    }
+
+    async function sendForPrediction(dataURL){
+      try {
+        // Prepare payload the server expects: { image: "data:image/jpeg;base64,...." }
+        const payload = { image: dataURL };
+
+        // Send POST to /predict (relative path)
+        const resp = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
         });
-    </script>
+
+        if (!resp.ok) {
+          const err = await resp.text();
+          log('Server error: ' + err);
+          return;
+        }
+
+        const json = await resp.json();
+
+        // UI update
+        if (json.label) {
+          detectedLabel.textContent = json.label;
+          detectedConfidence.textContent = (typeof json.confidence === 'number') ?
+            `Confidence: ${json.confidence.toFixed(2)}%` : `Confidence: —`;
+        } else if (json.error) {
+          log('Prediction error: ' + json.error);
+        }
+        lastTime.textContent = new Date().toLocaleTimeString();
+        log(`Prediction received: ${json.label} (${json.confidence ? json.confidence.toFixed(2) + '%' : '—'})`);
+      } catch (err) {
+        log('Network / fetch error: ' + err.message);
+      }
+    }
+
+    // Button events
+    captureBtn.addEventListener('click', async () => {
+      if (!streaming) {
+        log('Camera is off — starting camera for capture...');
+        await startCamera();
+        // give camera a moment to warm up
+        await new Promise(r => setTimeout(r, 300));
+      }
+
+      const dataURL = captureFrame();
+
+      // quick UI feedback
+      detectedLabel.textContent = 'Detecting…';
+      detectedConfidence.textContent = '';
+      await sendForPrediction(dataURL);
+    });
+
+    toggleStreamBtn.addEventListener('click', () => {
+      if (streaming) stopCamera();
+      else startCamera();
+    });
+
+    // Auto-start camera (optional): comment out if you don't want the browser to prompt immediately
+    (async () => {
+      // try to auto-start but ignore errors
+      try { await startCamera(); } catch(e){ /* no-op */ }
+    })();
+
+    // Helpful: allow pressing space to capture
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        captureBtn.click();
+      }
+    });
+  </script>
 </body>
 </html>
-
