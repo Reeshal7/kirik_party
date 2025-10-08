@@ -3,9 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Emotion Detector</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 2rem 3rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            max-width: 760px;
+            width: 90%;
+        }
+        h1 {
+            color: #1c1e21;
+            margin-bottom: 0.5rem;
+        }
+        p {
+            color: #606770;
+            margin-bottom: 1.5rem;
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            margin: 0 auto 1.5rem;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #000;
+        }
+        video {
+            display: block;
+            width: 100%;
+            height: auto;
+            transform: scaleX(-1); /* Mirror effect */
+        }
+        button {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
+            margin-bottom: 1rem;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #result {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #007bff;
+            min-height: 2rem;
+            margin-top: 1rem;
+        }
+    </style>
 </head>
 <body>
-    <h1>This is a Flask app</h1>
+    <div class="container">
+        <h1>Live Emotion Detector</h1>
+        <p>Using a custom-trained Keras model via a Flask backend.</p>
+        <div class="video-container">
+            <video id="video" autoplay muted playsinline></video>
+        </div>
+        <button id="startButton">Start Camera</button>
+        <p id="result">Emotion: --</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const video = document.getElementById('video');
+            const startButton = document.getElementById('startButton');
+            const resultElement = document.getElementById('result');
+            let stream;
+            let intervalId;
+
+            // This function handles starting the camera and the prediction loop
+            async function startDetection() {
+                try {
+                    // Request access to the user's webcam
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    video.srcObject = stream;
+                    await video.play();
+
+                    // Update UI once the camera is active
+                    startButton.style.display = 'none';
+                    resultElement.textContent = "Detecting...";
+                    
+                    // Start sending frames to the server for prediction every 200 milliseconds
+                    intervalId = setInterval(sendFrame, 200);
+
+                } catch (err) {
+                    console.error("Error accessing webcam: ", err);
+                    resultElement.textContent = "Could not access webcam.";
+                }
+            }
+            
+            startButton.addEventListener('click', startDetection);
+
+            // This function captures a frame, sends it to the server, and updates the UI with the result
+            async function sendFrame() {
+                // Ensure the video stream is active before proceeding
+                if (!video.srcObject || video.paused || video.ended) {
+                    return;
+                }
+                
+                // Create a canvas to capture the current video frame
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Convert the canvas image to a base64 JPEG data URL
+                const data = canvas.toDataURL('image/jpeg', 0.8);
+
+                try {
+                    // Send the image data to the /predict endpoint on the Flask server
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ image: data }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    // Parse the JSON response from the server
+                    const result = await response.json();
+                    
+                    // Update the result element with the predicted emotion and confidence
+                    resultElement.textContent = `Emotion: ${result.label} (${result.confidence.toFixed(1)}%)`;
+                
+                } catch (error) {
+                    console.error("Error sending frame to server:", error);
+                    resultElement.textContent = "Connection error.";
+                    // Stop the prediction loop if there's a connection error
+                    if (intervalId) clearInterval(intervalId);
+                }
+            }
+        });
+    </script>
 </body>
 </html>
+
