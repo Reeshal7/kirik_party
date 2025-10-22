@@ -158,6 +158,7 @@
       <div class="controls">
         <button id="capture">Capture & Detect</button>
         <button id="toggleStream" class="secondary small">Stop Stream</button>
+        <button class="secondary small" onclick="window.open('dashboard.html', '_blank')">📊 Dashboard</button>
         <div style="flex:1"></div>
         <div class="flash" id="cameraStatus">Camera: Off</div>
       </div>
@@ -280,6 +281,11 @@
           detectedLabel.textContent = json.label;
           detectedConfidence.textContent = (typeof json.confidence === 'number') ?
             `Confidence: ${json.confidence.toFixed(2)}%` : `Confidence: —`;
+          localStorage.setItem('lastDetection', JSON.stringify({
+            label: json.label,
+            confidence: json.confidence,
+            timestamp: Date.now()
+          }));
         } else if (json.error) {
           log('Prediction error: ' + json.error);
         }
