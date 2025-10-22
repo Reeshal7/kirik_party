@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Emotion Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+:root{
+--bg:#0f1724;
+--card:#0b1220;
+--accent:#7c3aed;
+--muted:#9aa6b2;
+--success:#10b981;
+--danger:#ef4444;
+--warning:#f59e0b;
+}
+
+*{box-sizing:border-box;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+body{
+margin:0;
+min-height:100vh;
+background:linear-gradient(180deg,#071124 0%, #071832 100%);
+color:#e6eef6;
+padding:24px;
+}
+
+.container{
+max-width:1400px;
+margin:0 auto;
+}
+
+header{
+margin-bottom:32px;
+}
+
+h1{
+font-size:2.2rem;
+margin:0 0 8px 0;
+font-weight:800;
+background:linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+background-clip:text;
+}
+
+.subtitle{
+color:var(--muted);
+font-size:1.05rem;
+}
+
+.stats-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+gap:18px;
+margin-bottom:24px;
+}
+
+.stat-card{
+background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+border-radius:14px;
+padding:20px;
+box-shadow: 0 4px 20px rgba(2,6,23,0.4);
+border:1px solid rgba(255,255,255,0.03);
+transition:all 0.3s ease;
+}
+
+.stat-card:hover{
+transform:translateY(-2px);
+box-shadow: 0 8px 30px rgba(124,58,237,0.15);
+}
+
+.stat-label{
+font-size:0.85rem;
+color:var(--muted);
+text-transform:uppercase;
+letter-spacing:0.8px;
+font-weight:600;
+}
+
+.stat-value{
+font-size:2.5rem;
+font-weight:800;
+margin:8px 0;
+background:linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+background-clip:text;
+}
+
+.stat-change{
+font-size:0.9rem;
+display:flex;
+align-items:center;
+gap:4px;
+}
+
+.stat-change.positive{ color:var(--success); }
+.stat-change.neutral{ color:var(--muted); }
+
+.charts-grid{
+display:grid;
+grid-template-columns:repeat(2, 1fr);
+gap:18px;
+margin-bottom:24px;
+}
+
+.chart-card{
+background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+border-radius:14px;
+padding:24px;
+box-shadow: 0 4px 20px rgba(2,6,23,0.4);
+border:1px solid rgba(255,255,255,0.03);
+}
+
+.chart-card.wide{
+grid-column:span 2;
+}
+
+.chart-title{
+font-size:1.2rem;
+font-weight:700;
+margin:0 0 20px 0;
+color:#e6eef6;
+}
+
+canvas{
+max-height:320px;
+}
+
+.table-card{
+background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+border-radius:14px;
+padding:24px;
+box-shadow: 0 4px 20px rgba(2,6,23,0.4);
+border:1px solid rgba(255,255,255,0.03);
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:12px;
+}
+
+thead{
+border-bottom:2px solid rgba(255,255,255,0.06);
+}
+
+th{
+text-align:left;
+padding:12px 8px;
+font-size:0.85rem;
+text-transform:uppercase;
+letter-spacing:0.6px;
+color:var(--muted);
+font-weight:600;
+}
+
+td{
+padding:14px 8px;
+border-bottom:1px solid rgba(255,255,255,0.03);
+}
+
+tr:hover{
+background:rgba(255,255,255,0.02);
+}
+
+.emotion-badge{
+display:inline-block;
+padding:6px 12px;
+border-radius:999px;
+font-weight:600;
+font-size:0.85rem;
+}
+
+.badge-happy{ background:rgba(16,185,129,0.15); color:#10b981; }
+.badge-sad{ background:rgba(59,130,246,0.15); color:#3b82f6; }
+.badge-angry{ background:rgba(239,68,68,0.15); color:#ef4444; }
+.badge-neutral{ background:rgba(156,163,175,0.15); color:#9ca3af; }
+.badge-surprised{ background:rgba(245,158,11,0.15); color:#f59e0b; }
+.badge-fearful{ background:rgba(168,85,247,0.15); color:#a855f7; }
+.badge-disgusted{ background:rgba(236,72,153,0.15); color:#ec4899; }
+
+.controls{
+display:flex;
+gap:12px;
+margin-bottom:24px;
+flex-wrap:wrap;
+}
+
+button{
+background:var(--accent);
+color:white;
+border:none;
+padding:12px 20px;
+border-radius:10px;
+cursor:pointer;
+font-weight:600;
+box-shadow: 0 6px 18px rgba(124,58,237,0.18);
+transition:all 0.2s ease;
+}
+
+button:hover{
+transform:translateY(-1px);
+box-shadow: 0 8px 24px rgba(124,58,237,0.25);
+}
+
+button.secondary{
+background:transparent;
+border:1px solid rgba(255,255,255,0.1);
+color:var(--muted);
+box-shadow:none;
+}
+
+button.secondary:hover{
+background:rgba(255,255,255,0.03);
+border-color:rgba(255,255,255,0.15);
+}
+
+@media (max-width:1024px){
+.charts-grid{ grid-template-columns:1fr; }
+.chart-card.wide{ grid-column:span 1; }
+}
+
+@media (max-width:768px){
+.stats-grid{ grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>Emotion Analytics Dashboard</h1>
+<div class="subtitle">Real-time emotion detection insights and analytics</div>
+</header>
+
+<div class="controls">
+<button onclick="location.href='index.html'">← Back to Camera</button>
+<button class="secondary" onclick="clearData()">Clear All Data</button>
+<button class="secondary" onclick="exportData()">Export Data</button>
+</div>
+
+<div class="stats-grid">
+<div class="stat-card">
+<div class="stat-label">Total Detections</div>
+<div class="stat-value" id="totalDetections">0</div>
+<div class="stat-change neutral" id="detectionsChange">
+<span>—</span>
+</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-label">Most Common</div>
+<div class="stat-value" id="mostCommon" style="font-size:1.8rem;">—</div>
+<div class="stat-change neutral">
+<span id="mostCommonPercent">0%</span>
+</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-label">Avg Confidence</div>
+<div class="stat-value" id="avgConfidence">0%</div>
+<div class="stat-change positive">
+<span>±0.0%</span>
+</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-label">Session Duration</div>
+<div class="stat-value" id="sessionDuration" style="font-size:2rem;">0m</div>
+<div class="stat-change neutral">
+<span>Active session</span>
+</div>
+</div>
+</div>
+
+<div class="charts-grid">
+<div class="chart-card">
+<h3 class="chart-title">Emotion Distribution</h3>
+<canvas id="pieChart"></canvas>
+</div>
+
+<div class="chart-card">
+<h3 class="chart-title">Confidence Levels</h3>
+<canvas id="confidenceChart"></canvas>
+</div>
+
+<div class="chart-card wide">
+<h3 class="chart-title">Emotion Timeline</h3>
+<canvas id="timelineChart"></canvas>
+</div>
+</div>
+
+<div class="table-card">
+<h3 class="chart-title">Recent Detections</h3>
+<table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Emotion</th>
+<th>Confidence</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="recentTable">
+<tr>
+<td colspan="4" style="text-align:center;color:var(--muted);">No detections yet</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<script>
+// Data storage
+let detections = [];
+let sessionStart = Date.now();
+
+// Chart instances
+let pieChart, confidenceChart, timelineChart;
+
+// Load data from localStorage on page load
+function loadData() {
+const stored = localStorage.getItem('emotionDetections');
+if (stored) {
+detections = JSON.parse(stored);
+const startTime = localStorage.getItem('sessionStart');
+if (startTime) sessionStart = parseInt(startTime);
+}
+}
+
+// Save data to localStorage
+function saveData() {
+localStorage.setItem('emotionDetections', JSON.stringify(detections));
+localStorage.setItem('sessionStart', sessionStart.toString());
+}
+
+// Add new detection
+function addDetection(label, confidence) {
+detections.push({
+timestamp: Date.now(),
+label: label,
+confidence: confidence
+});
+saveData();
+updateDashboard();
+}
+
+// Clear all data
+function clearData() {
+if (confirm('Are you sure you want to clear all detection data?')) {
+detections = [];
+sessionStart = Date.now();
+localStorage.removeItem('emotionDetections');
+localStorage.removeItem('sessionStart');
+updateDashboard();
+}
+}
+
+// Export data as JSON
+function exportData() {
+const data = {
+sessionStart: new Date(sessionStart).toISOString(),
+detections: detections.map(d => ({
+time: new Date(d.timestamp).toISOString(),
+emotion: d.label,
+confidence: d.confidence
+}))
+};
+const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = `emotion-data-${Date.now()}.json`;
+a.click();
+}
+
+// Update all dashboard elements
+function updateDashboard() {
+updateStats();
+updateCharts();
+updateTable();
+}
+
+// Update statistics cards
+function updateStats() {
+// Total detections
+document.getElementById('totalDetections').textContent = detections.length;
+
+// Most common emotion
+if (detections.length > 0) {
+const counts = {};
+detections.forEach(d => {
+counts[d.label] = (counts[d.label] || 0) + 1;
+});
+const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+const mostCommon = sorted[0][0];
+const percentage = ((sorted[0][1] / detections.length) * 100).toFixed(1);
+
+document.getElementById('mostCommon').textContent = mostCommon;
+document.getElementById('mostCommonPercent').textContent = `${percentage}% of total`;
+}
+
+// Average confidence
+if (detections.length > 0) {
+const avgConf = detections.reduce((sum, d) => sum + d.confidence, 0) / detections.length;
+document.getElementById('avgConfidence').textContent = avgConf.toFixed(1) + '%';
+}
+
+// Session duration
+const duration = Math.floor((Date.now() - sessionStart) / 60000);
+document.getElementById('sessionDuration').textContent = duration + 'm';
+}
+
+// Update all charts
+function updateCharts() {
+updatePieChart();
+updateConfidenceChart();
+updateTimelineChart();
+}
+
+// Emotion distribution pie chart
+function updatePieChart() {
+const ctx = document.getElementById('pieChart');
+
+if (detections.length === 0) {
+if (pieChart) pieChart.destroy();
+return;
+}
+
+const counts = {};
+detections.forEach(d => {
+counts[d.label] = (counts[d.label] || 0) + 1;
+});
+
+const colors = {
+Happy: '#10b981',
+Sad: '#3b82f6',
+Angry: '#ef4444',
+Neutral: '#9ca3af',
+Surprised: '#f59e0b',
+Fearful: '#a855f7',
+Disgusted: '#ec4899'
+};
+
+const data = {
+labels: Object.keys(counts),
+datasets: [{
+data: Object.values(counts),
+backgroundColor: Object.keys(counts).map(label => colors[label] || '#6b7280'),
+borderWidth: 2,
+borderColor: '#0f1724'
+}]
+};
+
+if (pieChart) pieChart.destroy();
+
+pieChart = new Chart(ctx, {
+type: 'doughnut',
+data: data,
+options: {
+responsive: true,
+maintainAspectRatio: true,
+plugins: {
+legend: {
+position: 'bottom',
+labels: { color: '#e6eef6', padding: 15, font: { size: 12 } }
+}
+}
+}
+});
+}
+
+// Confidence levels bar chart
+function updateConfidenceChart() {
+const ctx = document.getElementById('confidenceChart');
+
+if (detections.length === 0) {
+if (confidenceChart) confidenceChart.destroy();
+return;
+}
+
+// Group by emotion and calculate average confidence
+const emotionConfidence = {};
+detections.forEach(d => {
+if (!emotionConfidence[d.label]) {
+emotionConfidence[d.label] = { sum: 0, count: 0 };
+}
+emotionConfidence[d.label].sum += d.confidence;
+emotionConfidence[d.label].count += 1;
+});
+
+const labels = Object.keys(emotionConfidence);
+const avgConfidences = labels.map(label =>
+(emotionConfidence[label].sum / emotionConfidence[label].count).toFixed(1)
+);
+
+const data = {
+labels: labels,
+datasets: [{
+label: 'Avg Confidence %',
+data: avgConfidences,
+backgroundColor: 'rgba(124, 58, 237, 0.6)',
+borderColor: '#7c3aed',
+borderWidth: 2
+}]
+};
+
+if (confidenceChart) confidenceChart.destroy();
+
+confidenceChart = new Chart(ctx, {
+type: 'bar',
+data: data,
+options: {
+responsive: true,
+maintainAspectRatio: true,
+scales: {
+y: {
+beginAtZero: true,
+max: 100,
+ticks: { color: '#9aa6b2' },
+grid: { color: 'rgba(255,255,255,0.05)' }
+},
+x: {
+ticks: { color: '#9aa6b2' },
+grid: { display: false }
+}
+},
+plugins: {
+legend: { display: false }
+}
+}
+});
+}
+
+// Timeline chart
+function updateTimelineChart() {
+const ctx = document.getElementById('timelineChart');
+
+if (detections.length === 0) {
+if (timelineChart) timelineChart.destroy();
+return;
+}
+
+// Get last 20 detections
+const recent = detections.slice(-20);
+const labels = recent.map(d => new Date(d.timestamp).toLocaleTimeString());
+
+// Create datasets for each emotion
+const emotions = [...new Set(detections.map(d => d.label))];
+const colors = {
+Happy: '#10b981',
+Sad: '#3b82f6',
+Angry: '#ef4444',
+Neutral: '#9ca3af',
+Surprised: '#f59e0b',
+Fearful: '#a855f7',
+Disgusted: '#ec4899'
+};
+
+const datasets = emotions.map(emotion => ({
+label: emotion,
+data: recent.map(d => d.label === emotion ? d.confidence : null),
+borderColor: colors[emotion] || '#6b7280',
+backgroundColor: colors[emotion] || '#6b7280',
+tension: 0.4,
+spanGaps: false
+}));
+
+const data = { labels, datasets };
+
+if (timelineChart) timelineChart.destroy();
+
+timelineChart = new Chart(ctx, {
+type: 'line',
+data: data,
+options: {
+responsive: true,
+maintainAspectRatio: true,
+interaction: { intersect: false, mode: 'index' },
+scales: {
+y: {
+beginAtZero: true,
+max: 100,
+ticks: { color: '#9aa6b2' },
+grid: { color: 'rgba(255,255,255,0.05)' }
+},
+x: {
+ticks: { color: '#9aa6b2', maxRotation: 45 },
+grid: { display: false }
+}
+},
+plugins: {
+legend: {
+position: 'top',
+labels: { color: '#e6eef6', padding: 15, usePointStyle: true }
+}
+}
+}
+});
+}
+
+// Update recent detections table
+function updateTable() {
+const tbody = document.getElementById('recentTable');
+
+if (detections.length === 0) {
+tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">No detections yet</td></tr>';
+return;
+}
+
+const recent = detections.slice(-10).reverse();
+
+tbody.innerHTML = recent.map(d => {
+const emotion = d.label.toLowerCase();
+const badgeClass = `badge-${emotion}`;
+const status = d.confidence > 80 ? 'High' : d.confidence > 60 ? 'Medium' : 'Low';
+
+return `
+<tr>
+<td>${new Date(d.timestamp).toLocaleTimeString()}</td>
+<td><span class="emotion-badge ${badgeClass}">${d.label}</span></td>
+<td>${d.confidence.toFixed(1)}%</td>
+<td>${status}</td>
+</tr>
+`;
+}).join('');
+}
+
+// Simulate receiving data (replace with actual integration)
+function simulateDetection() {
+const emotions = ['Happy', 'Sad', 'Angry', 'Neutral', 'Surprised', 'Fearful', 'Disgusted'];
+const emotion = emotions[Math.floor(Math.random() * emotions.length)];
+const confidence = 60 + Math.random() * 40;
+addDetection(emotion, confidence);
+}
+
+// Check for updates from camera page via localStorage events
+window.addEventListener('storage', (e) => {
+if (e.key === 'latestDetection') {
+const data = JSON.parse(e.newValue);
+addDetection(data.label, data.confidence);
+}
+});
+
+// Poll for new detections (alternative method)
+setInterval(() => {
+const latest = localStorage.getItem('latestDetection');
+if (latest) {
+const data = JSON.parse(latest);
+const lastTimestamp = detections.length > 0 ? detections[detections.length - 1].timestamp : 0;
+if (data.timestamp > lastTimestamp) {
+addDetection(data.label, data.confidence);
+}
+}
+}, 2000);
+
+// Initialize
+loadData();
+updateDashboard();
+
+// Auto-refresh every 5 seconds
+setInterval(updateStats, 5000);
+</script>
+</body>
+</html>
