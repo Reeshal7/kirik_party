@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standalone AI Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles from your demo */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .app-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .card {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .btn-primary {
+            @apply px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 transition-transform transform hover:scale-105;
+        }
+        /* Chatbot specific styles */
+        .chat-bubble-user {
+            @apply bg-blue-500 text-white self-end;
+        }
+        .chat-bubble-bot {
+            @apply bg-gray-200 text-gray-800 self-start;
+        }
+        .typing-indicator {
+            display: none; /* Hidden by default */
+            align-items: center;
+        }
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            margin: 0 2px;
+            background-color: #9ca3af;
+            border-radius: 50%;
+            display: inline-block;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+    </style>
+</head>
+<body class="app-container antialiased text-gray-800 flex items-center justify-center p-4">
+
+    <main class="w-full max-w-lg">
+        <div class="card p-6 rounded-2xl shadow-lg flex flex-col">
+            <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-4 4s1.78 4 4 4c0 2.22-1.78 4-4 4Z"></path><path d="M12 20.94c-1.5 0-2.75 1.06-4 1.06-3 0-6-8-6-12.22A4.91 4.91 0 0 1 7 5c2.22 0 4 1.44 4 4s-1.78 4-4 4c0 2.22 1.78 4 4 4Z"></path></svg>
+                Emotional AI Chatbot
+            </h2>
+            <div class="mb-4">
+                <label for="api-key-input" class="text-sm font-medium text-gray-700">Google AI API Key</label>
+                <input type="password" id="api-key-input" class="w-full mt-1 p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="Enter your API key here">
+                <p class="text-xs text-gray-500 mt-1">Your key is needed to run the bot locally.</p>
+            </div>
+            <div id="chat-window" class="flex-1 w-full h-72 p-4 bg-gray-100 rounded-lg border border-gray-200 overflow-y-auto flex flex-col space-y-2 mb-4">
+                </div>
+            <div class="typing-indicator" id="typing-indicator">
+                <span class="text-sm text-gray-500 mr-2">Bot is typing</span>
+                <span></span><span></span><span></span>
+            </div>
+            <div class="flex items-center space-x-2 mt-2">
+                <input type="text" id="chat-input" class="flex-1 w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="Type a message...">
+                <button id="send-btn" class="btn-primary">Send</button>
+            </div>
+            <div id="chatbot-error" class="text-red-500 mt-2 text-sm"></div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- Chatbot Elements and Logic ---
+            const chatWindow = document.getElementById('chat-window');
+            const chatInput = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-btn');
+            const chatbotErrorEl = document.getElementById('chatbot-error');
+            const typingIndicator = document.getElementById('typing-indicator');
+            const apiKeyInput = document.getElementById('api-key-input');
+            let chatHistory = []; // Stores the conversation history
+
+            function addMessageToChat(message, sender) {
+                const bubble = document.createElement('div');
+                bubble.textContent = message;
+                bubble.className = `p-3 rounded-lg max-w-xs lg:max-w-md break-words ${sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot'}`;
+                chatWindow.appendChild(bubble);
+                chatWindow.scrollTop = chatWindow.scrollHeight; // Auto-scroll to the bottom
+            }
+
+            async function getAIResponse() {
+                const apiKey = apiKeyInput.value.trim();
+                if (!apiKey) {
+                    chatbotErrorEl.textContent = 'Please enter your Google AI API key above to use the chatbot.';
+                    return "It looks like you haven't entered an API key. Please add one above to chat with me.";
+                }
+
+                typingIndicator.style.display = 'flex';
+                sendBtn.disabled = true;
+                chatbotErrorEl.textContent = '';
+
+                // --- IMPORTANT: Using the model name from your working code ---
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+                const systemPrompt = "You are a friendly, empathetic, and supportive chatbot. Your goal is to listen to the user and respond in a kind, understanding, and encouraging way. Do not give advice unless asked. Keep your responses short and conversational, like you're texting a friend. Acknowledge the user's feelings if they express any.";
+
+                const payload = {
+                    contents: chatHistory, // Send the entire chat history
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorResult = await response.json();
+                        console.error('API Error Response:', errorResult);
+                        const errorMessage = errorResult.error?.message || `API error: ${response.status} ${response.statusText}`;
+                        // This will catch the "model not found" or "API not enabled" errors
+                        throw new Error(errorMessage);
+                    }
+
+                    const result = await response.json();
+                    const botMessage = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    if (botMessage) {
+                        return botMessage;
+                    } else {
+                        // If no response, pop the last user message from history to allow a retry
+                        chatHistory.pop(); 
+                        return "I'm sorry, I couldn't think of a response. Please try rephrasing.";
+                    }
+
+                } catch (error) {
+                    console.error("Error fetching AI response:", error);
+                    // Pop the last user message from history because the request failed
+                    chatHistory.pop();
+                    chatbotErrorEl.textContent = `Error: ${error.message}`;
+                    return "Sorry, something went wrong on my end. Please check your API key and network connection.";
+                } finally {
+                    typingIndicator.style.display = 'none';
+                    sendBtn.disabled = false;
+                    chatInput.focus();
+                }
+            }
+
+            async function handleSendMessage() {
+                const message = chatInput.value.trim();
+                if (message === '') {
+                    chatbotErrorEl.textContent = 'Please type a message.';
+                    return;
+                }
+                
+                addMessageToChat(message, 'user');
+                chatHistory.push({ role: "user", parts: [{ text: message }] }); // Add user message to history
+                chatInput.value = '';
+
+                const botMessage = await getAIResponse();
+                addMessageToChat(botMessage, 'bot');
+                chatHistory.push({ role: "model", parts: [{ text: botMessage }] }); // Add bot response to history
+            }
+            
+            sendBtn.addEventListener('click', handleSendMessage);
+            chatInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    handleSendMessage();
+                }
+            });
+
+             // Add a welcome message from the bot on load and to the history
+            setTimeout(() => {
+                const welcomeMessage = "Hello! I'm here to listen. How are you feeling today?";
+                addMessageToChat(welcomeMessage, 'bot');
+                chatHistory.push({ role: "model", parts: [{ text: welcomeMessage }] });
+            }, 500);
+
+        });
+    </script>
+</body>
+</html>
